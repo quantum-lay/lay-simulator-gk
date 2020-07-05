@@ -320,4 +320,54 @@ mod tests {
             }
         }, &[0, 1, 1]);
     }
+
+    #[test]
+    fn test_h_and_z() {
+        check(|gk| {
+            gk.h(0);
+            gk.z(0);
+            gk.h(0);
+            gk.x(1);
+            gk.h(1);
+            gk.h(1);
+            for i in 0..gk.n_qubits() {
+                gk.measure(i, i);
+            }
+        }, &[1, 1]);
+    }
+
+    #[test]
+    fn test_h_and_s() {
+        check(|gk| {
+            gk.h(0);
+            gk.s(0);
+            gk.s(0);
+            gk.s(0);
+            gk.s(0);
+            gk.h(0);
+            gk.h(1);
+            gk.sdg(1);
+            gk.sdg(1);
+            gk.h(1);
+            for i in 0..gk.n_qubits() {
+                gk.measure(i, i);
+            }
+        }, &[0, 1]);
+    }
+
+    #[test]
+    fn test_h_and_x() {
+        check(|gk| {
+            gk.h(0);
+            gk.s(0);
+            gk.h(0);
+            gk.x(0);
+            gk.h(0);
+            gk.sdg(0);
+            gk.h(0);
+            for i in 0..gk.n_qubits() {
+                gk.measure(i, i);
+            }
+        }, &[1]);
+    }
 }
