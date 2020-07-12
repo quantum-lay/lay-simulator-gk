@@ -9,8 +9,8 @@ use bitarray::BitArray;
 mod fakerng;
 pub use fakerng::RepeatSeqFakeRng;
 
-type Qubit = u32;
-type DefaultRng = XorShiftRng;
+pub type Qubit = u32;
+pub type DefaultRng = XorShiftRng;
 
 pub struct GottesmanKnillSimulator<Rng> {
     xs: Vec<BitArray>,
