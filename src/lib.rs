@@ -6,6 +6,9 @@ use lay::gates::CliffordGate;
 mod bitarray;
 use bitarray::BitArray;
 
+mod fakerng;
+pub use fakerng::RepeatSeqFakeRng;
+
 type Qubit = u32;
 type DefaultRng = XorShiftRng;
 
@@ -213,14 +216,19 @@ fn measure<Rng: RngCore>(gk: &mut GottesmanKnillSimulator<Rng>, q: Qubit) -> boo
         for &j in noncommutatives[1..].iter() {
             mult_to(gk, j, i);
         }
-        (gk.rng.next_u32() & 1) != 0
+        let is_one = (gk.rng.next_u32() & 1) != 0;
+        gk.xs[noncommutatives[0]].reset();
+        gk.zs[noncommutatives[0]].reset();
+        gk.zs[noncommutatives[0]].negate(q as usize);
+        gk.sgns.set_bool(noncommutatives[0], is_one);
+        is_one
     }
 }
 
 #[cfg(test)]
 mod tests {
     #[allow(unused_imports)]
-    use crate::{GottesmanKnillSimulator, Qubit, DefaultRng};
+    use crate::{GottesmanKnillSimulator, Qubit, DefaultRng, RepeatSeqFakeRng};
     #[allow(unused_imports)]
     use rand_core::{RngCore, SeedableRng};
     #[allow(unused_imports)]
@@ -238,6 +246,13 @@ mod tests {
 
     fn check(ops: impl Fn(&mut GottesmanKnillSimulator<DefaultRng>), expect: &[u32]) {
         let mut gk = GottesmanKnillSimulator::from_seed(expect.len() as Qubit, 0);
+        ops(&mut gk);
+        let actual: Vec<_> = (0..expect.len()).map(|i| gk.measured.get_bool(i) as u32).collect();
+        assert_eq!(actual.as_slice(), expect);
+    }
+
+    fn check_with_randseq(ops: impl Fn(&mut GottesmanKnillSimulator<RepeatSeqFakeRng>), expect: &[u32], seq: Vec<u64>) {
+        let mut gk = GottesmanKnillSimulator::from_rng(expect.len() as Qubit, RepeatSeqFakeRng::new(seq));
         ops(&mut gk);
         let actual: Vec<_> = (0..expect.len()).map(|i| gk.measured.get_bool(i) as u32).collect();
         assert_eq!(actual.as_slice(), expect);
@@ -369,5 +384,18 @@ mod tests {
                 gk.measure(i, i);
             }
         }, &[1]);
+    }
+
+    #[test]
+    fn test_hh() {
+        check_with_randseq(|gk| {
+            gk.h(0);
+            gk.cx(0, 1);
+            gk.h(2);
+            gk.cx(2, 3);
+            for i in 0..gk.n_qubits() {
+                gk.measure(i, i);
+            }
+        }, &[1, 1, 0, 0], vec![1, 0, 0, 0]);
     }
 }
