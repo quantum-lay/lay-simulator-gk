@@ -398,17 +398,4 @@ mod tests {
             }
         }, &[1, 1, 0, 0], vec![1, 0, 0, 0]);
     }
-
-    #[test]
-    fn test_hh() {
-        check_with_randseq(|gk| {
-            gk.h(0);
-            gk.cx(0, 1);
-            gk.h(2);
-            gk.cx(2, 3);
-            for i in 0..gk.n_qubits() {
-                gk.measure(i, i);
-            }
-        }, &[1, 1, 0, 0], vec![1, 0, 0, 0]);
-    }
 }
