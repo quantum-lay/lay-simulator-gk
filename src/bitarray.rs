@@ -7,8 +7,9 @@ const BLOCK_SIZE: usize = 32;
 const BLOCK_MASK: usize = (!(0 as Block)) as usize;
 
 pub struct BitArray {
-    inner: Vec<Block>,
-    len: usize,
+    // TODO: not pub, they're private fields.
+    pub inner: Vec<Block>,
+    pub len: usize,
 }
 
 impl BitArray {
