@@ -174,7 +174,7 @@ mod tests {
     fn set_get3() {
         let mut ba = BitArray::zeros(34);
         ba.negate(31);
-        for i in 0..6 {
+        for i in 0..34 {
             assert_eq!(i == 31, ba.get_bool(i));
         }
     }
@@ -183,7 +183,7 @@ mod tests {
     fn set_get4() {
         let mut ba = BitArray::zeros(34);
         ba.negate(32);
-        for i in 0..6 {
+        for i in 0..34 {
             assert_eq!(i == 32, ba.get_bool(i));
         }
     }
@@ -192,8 +192,30 @@ mod tests {
     fn set_get5() {
         let mut ba = BitArray::zeros(34);
         ba.negate(33);
-        for i in 0..6 {
+        for i in 0..34 {
             assert_eq!(i == 33, ba.get_bool(i));
+        }
+    }
+
+    #[test]
+    fn set_get6() {
+        let mut ba = BitArray::zeros(6);
+
+        ba.set_bool(1, true);
+        ba.set_bool(1, false);
+        for i in 0..6 {
+            assert_eq!(false, ba.get_bool(i));
+        }
+    }
+
+    #[test]
+    fn set_get7() {
+        let mut ba = BitArray::zeros(7);
+
+        ba.set_bool(2, false);
+        ba.set_bool(2, true);
+        for i in 0..7 {
+            assert_eq!(i == 2, ba.get_bool(i));
         }
     }
 
