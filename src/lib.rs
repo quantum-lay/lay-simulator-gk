@@ -170,7 +170,7 @@ fn measure<Rng: RngCore>(gk: &mut GottesmanKnillSimulator<Rng>, q: Qubit) -> boo
                                               .map(|(i, _)| i)
                                               .collect();
     if noncommutatives.is_empty() {
-        eprintln!("stabilized pattern");
+        //eprintln!("stabilized pattern");
         let n_qubits = gk.n_qubits() as usize;
         let mut indices: Vec<_> = (0..n_qubits).collect();
         for i in 0..n_qubits as usize {
@@ -212,7 +212,7 @@ fn measure<Rng: RngCore>(gk: &mut GottesmanKnillSimulator<Rng>, q: Qubit) -> boo
         // println!("measured sg: {:?}", gk.sgns.get_bool(indices[0]));
         gk.sgns.get_bool(indices[0])
     } else {
-        eprintln!("non-stabilized pattern");
+        //eprintln!("non-stabilized pattern");
         let i = noncommutatives[0];
         for &j in noncommutatives[1..].iter() {
             mult_to(gk, j, i);
