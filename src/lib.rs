@@ -18,8 +18,7 @@ pub struct GottesmanKnillSimulator<Rng> {
     xs: Vec<BitArray>,
     zs: Vec<BitArray>,
     sgns: BitArray,
-    // TODO: Not pub.
-    pub measured: BitArray,
+    measured: BitArray,
     rng: Rng,
 }
 
