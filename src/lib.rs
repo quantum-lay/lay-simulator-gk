@@ -238,6 +238,11 @@ mod tests {
     use lay::Operations;
     #[allow(unused_imports)]
     use lay::gates::CliffordGate;
+    #[allow(unused_imports)]
+    use lay_simulator_blueqat::{BlueqatSimulator, BlueqatOperations};
+    #[allow(unused_imports)]
+    use tokio::{prelude::*, runtime::Runtime};
+
 
     #[test]
     fn it_works() {
@@ -257,6 +262,13 @@ mod tests {
         ops(&mut gk);
         let actual: Vec<_> = (0..expect.len()).map(|i| gk.measured.get_bool(i) as u32).collect();
         assert_eq!(actual.as_slice(), expect);
+    }
+
+    fn check_stabilized(gk: &GottesmanKnillSimulator<DefaultRng>, bq: &BlueqatOperations) {
+        let rt = Runtime::new().unwrap();
+        let mut bqsim = BlueqatSimulator::new().unwrap();
+
+        // TODO: Implement
     }
 
     #[test]
@@ -398,5 +410,71 @@ mod tests {
                 gk.measure(i, i);
             }
         }, &[1, 1, 0, 0], vec![1, 0, 0, 0]);
+    }
+
+    #[test]
+    fn test_rand_except_cnot() {
+        let mut rng = XorShiftRng::seed_from_u64(123);
+        let mut gk = GottesmanKnillSimulator::from_seed(2, 0);
+        let mut bq = BlueqatOperations::new();
+        for _ in 0..10 {
+            match rng.next_u32() % 6 {
+                0 => {
+                    bq.h(0);
+                    gk.h(0);
+                },
+                1 => {
+                    bq.x(0);
+                    gk.x(0);
+                },
+                2 => {
+                    bq.y(0);
+                    gk.y(0);
+                },
+                3 => {
+                    bq.z(0);
+                    gk.z(0);
+                },
+                4 => {
+                    bq.s(0);
+                    gk.s(0);
+                },
+                5 => {
+                    bq.sdg(0);
+                    gk.sdg(0);
+                },
+                _ => unreachable!()
+            }
+        }
+        for _ in 0..10 {
+            match rng.next_u32() % 6 {
+                0 => {
+                    bq.h(1);
+                    gk.h(1);
+                },
+                1 => {
+                    bq.x(1);
+                    gk.x(1);
+                },
+                2 => {
+                    bq.y(1);
+                    gk.y(1);
+                },
+                3 => {
+                    bq.z(1);
+                    gk.z(1);
+                },
+                4 => {
+                    bq.s(1);
+                    gk.s(1);
+                },
+                5 => {
+                    bq.sdg(1);
+                    gk.sdg(1);
+                },
+                _ => unreachable!()
+            }
+        }
+        check_stabilized(&gk, &bq);
     }
 }
