@@ -1,10 +1,11 @@
+use std::fmt::Debug;
+
 use rand_core::{RngCore, SeedableRng};
 use rand_xorshift::XorShiftRng;
-use lay::Operations;
-use lay::gates::CliffordGate;
+use lay::{Layer, Operation, gates::{PauliGate, HGate, SGate, CXGate}, operations::opid};
 
 mod bitarray;
-use bitarray::BitArray;
+pub use bitarray::BitArray;
 
 mod fakerng;
 pub use fakerng::RepeatSeqFakeRng;
@@ -12,6 +13,7 @@ pub use fakerng::RepeatSeqFakeRng;
 pub type Qubit = u32;
 pub type DefaultRng = XorShiftRng;
 
+#[derive(Debug)]
 pub struct GottesmanKnillSimulator<Rng> {
     xs: Vec<BitArray>,
     zs: Vec<BitArray>,
@@ -21,11 +23,17 @@ pub struct GottesmanKnillSimulator<Rng> {
     rng: Rng,
 }
 
+impl<Rng: RngCore + Debug> PauliGate for GottesmanKnillSimulator<Rng> {}
+impl<Rng: RngCore + Debug> HGate for GottesmanKnillSimulator<Rng> {}
+impl<Rng: RngCore + Debug> SGate for GottesmanKnillSimulator<Rng> {}
+impl<Rng: RngCore + Debug> CXGate for GottesmanKnillSimulator<Rng> {}
+
 impl GottesmanKnillSimulator<DefaultRng> {
     pub fn from_seed(n: Qubit, seed: u64) -> Self {
         Self::from_rng(n, DefaultRng::seed_from_u64(seed))
     }
 }
+
 impl<Rng: RngCore> GottesmanKnillSimulator<Rng> {
     pub fn from_rng(n: Qubit, rng: Rng) -> Self {
         let xs = (0..n).map(|_| BitArray::zeros(n as usize)).collect();
@@ -52,9 +60,49 @@ impl<Rng> GottesmanKnillSimulator<Rng> {
     }
 }
 
-impl<Rng: RngCore> Operations for GottesmanKnillSimulator<Rng> {
+impl<Rng: RngCore + Debug> Layer for GottesmanKnillSimulator<Rng> {
     type Qubit = Qubit;
     type Slot = Qubit;
+    type Buffer = BitArray;
+    type Requested = ();
+    type Response = ();
+
+    fn send(&mut self, ops: &[Operation<Self>]) {
+        for op in ops.iter() {
+            match op {
+                Operation::Empty(id) if *id == opid::INIT =>
+                    self.initialize(),
+                Operation::Q(id, q) => {
+                    match *id {
+                        opid::X => self.x(*q),
+                        opid::Y => self.y(*q),
+                        opid::Z => self.z(*q),
+                        opid::H => self.h(*q),
+                        opid::S => self.s(*q),
+                        opid::SDG => self.sdg(*q),
+                        _ => unimplemented!("Unexpected opid {:?}", *op)
+                    }
+                },
+                Operation::QS(id, q, s) if *id == opid::MEAS =>
+                    self.measure(*q, *s),
+                Operation::QQ(id, c, t) if *id == opid::CX =>
+                    self.cx(*c, *t),
+                _ => unimplemented!("Unexpected op {:?}", *op)
+            }
+        }
+    }
+
+    fn receive(&mut self, buf: &mut Self::Buffer) {
+        buf.copy_from(&self.measured)
+    }
+
+    fn send_receive(&mut self, ops: &[Operation<Self>], buf: &mut Self::Buffer) {
+        self.send(ops);
+        self.receive(buf);
+    }
+}
+
+impl<Rng: RngCore> GottesmanKnillSimulator<Rng> {
     fn initialize(&mut self) {
         self.xs.iter_mut().for_each(|a| a.reset());
         self.zs.iter_mut().for_each(|a| a.reset());
@@ -62,13 +110,12 @@ impl<Rng: RngCore> Operations for GottesmanKnillSimulator<Rng> {
         self.sgns.reset();
         self.measured.reset();
     }
-    fn measure(&mut self, q: Qubit, ch: Self::Slot) {
+
+    fn measure(&mut self, q: Qubit, ch: Qubit) {
         let bit = measure(self, q);
         self.measured.set_bool(ch as usize, bit);
     }
-}
 
-impl<Rng: RngCore> CliffordGate for GottesmanKnillSimulator<Rng> {
     #[inline]
     fn x(&mut self, q: Qubit) {
         for (i, _) in self.zs.iter().enumerate()
@@ -228,19 +275,12 @@ fn measure<Rng: RngCore>(gk: &mut GottesmanKnillSimulator<Rng>, q: Qubit) -> boo
 
 #[cfg(test)]
 mod tests {
-    #[allow(unused_imports)]
-    use crate::{GottesmanKnillSimulator, Qubit, DefaultRng, RepeatSeqFakeRng};
-    #[allow(unused_imports)]
+    #![allow(unused_imports)]
+    use crate::{GottesmanKnillSimulator, BitArray, Qubit, DefaultRng, RepeatSeqFakeRng};
     use rand_core::{RngCore, SeedableRng};
-    #[allow(unused_imports)]
     use rand_xorshift::XorShiftRng;
-    #[allow(unused_imports)]
-    use lay::Operations;
-    #[allow(unused_imports)]
-    use lay::gates::CliffordGate;
-    #[allow(unused_imports)]
-    use lay_simulator_blueqat::{BlueqatSimulator, BlueqatOperations};
-    #[allow(unused_imports)]
+    use lay::{Layer, OpsVec};
+    use lay_simulator_blueqat::BlueqatSimulator;
     use tokio::{prelude::*, runtime::Runtime};
 
 
@@ -250,32 +290,41 @@ mod tests {
         let _ = GottesmanKnillSimulator::from_seed(3, 0);
     }
 
-    fn check(ops: impl Fn(&mut GottesmanKnillSimulator<DefaultRng>), expect: &[u32]) {
-        let mut gk = GottesmanKnillSimulator::from_seed(expect.len() as Qubit, 0);
-        ops(&mut gk);
-        let actual: Vec<_> = (0..expect.len()).map(|i| gk.measured.get_bool(i) as u32).collect();
+    fn check(f: impl Fn(&mut OpsVec<GottesmanKnillSimulator<DefaultRng>>, Qubit), expect: &[u32]) {
+        let mut ops = OpsVec::new();
+        let mut result = BitArray::zeros(0);
+        f(&mut ops, expect.len() as Qubit);
+        GottesmanKnillSimulator::from_seed(expect.len() as Qubit, 0).send_receive(ops.as_ref(), &mut result);
+        let actual: Vec<_> = (0..expect.len()).map(|i| result.get_bool(i) as u32).collect();
         assert_eq!(actual.as_slice(), expect);
     }
 
-    fn check_with_randseq(ops: impl Fn(&mut GottesmanKnillSimulator<RepeatSeqFakeRng>), expect: &[u32], seq: Vec<u64>) {
-        let mut gk = GottesmanKnillSimulator::from_rng(expect.len() as Qubit, RepeatSeqFakeRng::new(seq));
-        ops(&mut gk);
-        let actual: Vec<_> = (0..expect.len()).map(|i| gk.measured.get_bool(i) as u32).collect();
+    fn check_with_randseq(f: impl Fn(&mut OpsVec<GottesmanKnillSimulator<RepeatSeqFakeRng>>, Qubit),
+                          expect: &[u32],
+                          seq: Vec<u64>) {
+        let mut ops = OpsVec::new();
+        let mut result = BitArray::zeros(0);
+        f(&mut ops, expect.len() as Qubit);
+        GottesmanKnillSimulator::from_rng(expect.len() as Qubit,
+                                          RepeatSeqFakeRng::new(seq)).send_receive(ops.as_ref(), &mut result);
+        let actual: Vec<_> = (0..expect.len()).map(|i| result.get_bool(i) as u32).collect();
         assert_eq!(actual.as_slice(), expect);
     }
 
+    /*
     fn check_stabilized(gk: &GottesmanKnillSimulator<DefaultRng>, bq: &BlueqatOperations) {
         let rt = Runtime::new().unwrap();
         let mut bqsim = BlueqatSimulator::new().unwrap();
 
         // TODO: Implement
     }
+    */
 
     #[test]
     fn test_zgate1() {
-        check(|gk| {
+        check(|gk, n_qubits| {
             gk.z(0);
-            for i in 0..gk.n_qubits() {
+            for i in 0..n_qubits {
                 gk.measure(i, i);
             }
         }, &[0]);
@@ -283,9 +332,9 @@ mod tests {
 
     #[test]
     fn test_xgate1() {
-        check(|gk| {
+        check(|gk, n_qubits| {
             gk.x(0);
-            for i in 0..gk.n_qubits() {
+            for i in 0..n_qubits {
                 gk.measure(i, i);
             }
         }, &[1]);
@@ -293,12 +342,12 @@ mod tests {
 
     #[test]
     fn test_xgate2() {
-        check(|gk| {
+        check(|gk, n_qubits| {
             gk.x(0);
             gk.x(3);
             gk.z(2);
             gk.x(6);
-            for i in 0..gk.n_qubits() {
+            for i in 0..n_qubits {
                 gk.measure(i, i);
             }
         }, &[1, 0, 0, 1, 0, 0, 1]);
@@ -306,9 +355,9 @@ mod tests {
 
     #[test]
     fn test_cx1() {
-        check(|gk| {
+        check(|gk, n_qubits| {
             gk.cx(0, 1);
-            for i in 0..gk.n_qubits() {
+            for i in 0..n_qubits {
                 gk.measure(i, i);
             }
         }, &[0, 0]);
@@ -316,10 +365,10 @@ mod tests {
 
     #[test]
     fn test_cx2() {
-        check(|gk| {
+        check(|gk, n_qubits| {
             gk.x(1);
             gk.cx(0, 1);
-            for i in 0..gk.n_qubits() {
+            for i in 0..n_qubits {
                 gk.measure(i, i);
             }
         }, &[0, 1]);
@@ -327,10 +376,10 @@ mod tests {
 
     #[test]
     fn test_cx3() {
-        check(|gk| {
+        check(|gk, n_qubits| {
             gk.x(0);
             gk.cx(0, 1);
-            for i in 0..gk.n_qubits() {
+            for i in 0..n_qubits {
                 gk.measure(i, i);
             }
         }, &[1, 1]);
@@ -338,12 +387,12 @@ mod tests {
 
     #[test]
     fn test_cx4() {
-        check(|gk| {
+        check(|gk, n_qubits| {
             gk.x(0);
             gk.cx(0, 1);
             gk.cx(1, 2);
             gk.cx(2, 0);
-            for i in 0..gk.n_qubits() {
+            for i in 0..n_qubits {
                 gk.measure(i, i);
             }
         }, &[0, 1, 1]);
@@ -351,14 +400,14 @@ mod tests {
 
     #[test]
     fn test_h_and_z() {
-        check(|gk| {
+        check(|gk, n_qubits| {
             gk.h(0);
             gk.z(0);
             gk.h(0);
             gk.x(1);
             gk.h(1);
             gk.h(1);
-            for i in 0..gk.n_qubits() {
+            for i in 0..n_qubits {
                 gk.measure(i, i);
             }
         }, &[1, 1]);
@@ -366,7 +415,7 @@ mod tests {
 
     #[test]
     fn test_h_and_s() {
-        check(|gk| {
+        check(|gk, n_qubits| {
             gk.h(0);
             gk.s(0);
             gk.s(0);
@@ -377,7 +426,7 @@ mod tests {
             gk.sdg(1);
             gk.sdg(1);
             gk.h(1);
-            for i in 0..gk.n_qubits() {
+            for i in 0..n_qubits {
                 gk.measure(i, i);
             }
         }, &[0, 1]);
@@ -385,7 +434,7 @@ mod tests {
 
     #[test]
     fn test_h_and_x() {
-        check(|gk| {
+        check(|gk, n_qubits| {
             gk.h(0);
             gk.s(0);
             gk.h(0);
@@ -393,7 +442,7 @@ mod tests {
             gk.h(0);
             gk.sdg(0);
             gk.h(0);
-            for i in 0..gk.n_qubits() {
+            for i in 0..n_qubits {
                 gk.measure(i, i);
             }
         }, &[1]);
@@ -401,17 +450,18 @@ mod tests {
 
     #[test]
     fn test_hh() {
-        check_with_randseq(|gk| {
+        check_with_randseq(|gk, n_qubits| {
             gk.h(0);
             gk.cx(0, 1);
             gk.h(2);
             gk.cx(2, 3);
-            for i in 0..gk.n_qubits() {
+            for i in 0..n_qubits {
                 gk.measure(i, i);
             }
         }, &[1, 1, 0, 0], vec![1, 0, 0, 0]);
     }
 
+    /*
     #[test]
     fn test_rand_except_cnot() {
         let mut rng = XorShiftRng::seed_from_u64(123);
@@ -477,4 +527,5 @@ mod tests {
         }
         check_stabilized(&gk, &bq);
     }
+    */
 }

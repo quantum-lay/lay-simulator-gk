@@ -39,6 +39,17 @@ impl BitArray {
         ones
     }
 
+    pub fn copy_from(&mut self, other: &Self) {
+        let cap = other.inner.len();
+        if self.inner.len() < cap {
+            self.inner.resize(cap, 0);
+        }
+        for i in 0..other.inner.len() {
+            self.inner[i] = other.inner[i];
+        }
+        self.len = other.len;
+    }
+
     pub fn reset(&mut self) {
         self.inner.iter_mut().for_each(|x| *x = 0);
     }
