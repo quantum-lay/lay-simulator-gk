@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use rand_core::{RngCore, SeedableRng};
 use rand_xorshift::XorShiftRng;
-use lay::{Layer, Operation, gates::{PauliGate, HGate, SGate, CXGate}, operations::opid};
+use lay::{Layer, gates::{PauliGate, HGate, SGate, CXGate}, operations::{opid, OpArgs}};
 
 mod bitarray;
 pub use bitarray::BitArray;
@@ -59,18 +59,19 @@ impl<Rng> GottesmanKnillSimulator<Rng> {
 }
 
 impl<Rng: RngCore + Debug> Layer for GottesmanKnillSimulator<Rng> {
+    type Operation = OpArgs<Self>;
     type Qubit = u32;
     type Slot = u32;
     type Buffer = BitArray;
     type Requested = ();
     type Response = ();
 
-    fn send(&mut self, ops: &[Operation<Self>]) {
+    fn send(&mut self, ops: &[OpArgs<Self>]) {
         for op in ops.iter() {
             match op {
-                Operation::Empty(id) if *id == opid::INIT =>
+                OpArgs::Empty(id) if *id == opid::INIT =>
                     self.initialize(),
-                Operation::Q(id, q) => {
+                OpArgs::Q(id, q) => {
                     match *id {
                         opid::X => self.x(*q),
                         opid::Y => self.y(*q),
@@ -81,9 +82,9 @@ impl<Rng: RngCore + Debug> Layer for GottesmanKnillSimulator<Rng> {
                         _ => unimplemented!("Unexpected opid {:?}", *op)
                     }
                 },
-                Operation::QS(id, q, s) if *id == opid::MEAS =>
+                OpArgs::QS(id, q, s) if *id == opid::MEAS =>
                     self.measure(*q, *s),
-                Operation::QQ(id, c, t) if *id == opid::CX =>
+                OpArgs::QQ(id, c, t) if *id == opid::CX =>
                     self.cx(*c, *t),
                 _ => unimplemented!("Unexpected op {:?}", *op)
             }
@@ -94,7 +95,7 @@ impl<Rng: RngCore + Debug> Layer for GottesmanKnillSimulator<Rng> {
         buf.copy_from(&self.measured);
     }
 
-    fn send_receive(&mut self, ops: &[Operation<Self>], buf: &mut BitArray) {
+    fn send_receive(&mut self, ops: &[OpArgs<Self>], buf: &mut BitArray) {
         self.send(ops);
         self.receive(buf);
     }
@@ -282,7 +283,6 @@ mod tests {
     use rand_core::{RngCore, SeedableRng};
     use rand_xorshift::XorShiftRng;
     use lay::{Layer, OpsVec};
-    use lay_simulator_blueqat::BlueqatSimulator;
     use tokio::{prelude::*, runtime::Runtime};
 
 

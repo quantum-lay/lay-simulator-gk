@@ -12,5 +12,4 @@ rand_xorshift = "0.2.0"
 rand_core = "0.5.1"
 
 [dev-dependencies]
-lay-simulator-blueqat = { path = "../lay-simulator-blueqat" }
 tokio = { version = "0.2.21", features = ["rt-core", "rt-threaded", "blocking", "macros"] }
