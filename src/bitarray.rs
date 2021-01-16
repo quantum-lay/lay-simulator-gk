@@ -8,9 +8,8 @@ const BLOCK_SIZE: usize = 32;
 const BLOCK_MASK: usize = (!(0 as Block)) as usize;
 
 pub struct BitArray {
-    // TODO: not pub, they're private fields.
-    pub inner: Vec<Block>,
-    pub len: usize,
+    inner: Vec<Block>,
+    len: usize,
 }
 
 impl BitArray {
@@ -88,6 +87,10 @@ impl BitArray {
         for (dest, src) in self.inner.iter_mut().zip(other.inner.iter()) {
             *dest ^= *src;
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
     }
 
     pub fn true_indices(&self) -> TIndices {

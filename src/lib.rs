@@ -98,6 +98,10 @@ impl<Rng: RngCore + Debug> Layer for GottesmanKnillSimulator<Rng> {
         self.send(ops);
         self.receive(buf);
     }
+
+    fn make_buffer(&self) -> Self::Buffer {
+        BitArray::zeros(self.measured.len())
+    }
 }
 
 impl<Rng: RngCore> GottesmanKnillSimulator<Rng> {
