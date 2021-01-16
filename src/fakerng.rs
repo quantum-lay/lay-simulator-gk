@@ -1,5 +1,6 @@
 use rand_core::RngCore;
 
+#[derive(Debug)]
 pub struct RepeatSeqFakeRng {
     cnt: usize,
     seq: Vec<u64>,

@@ -1,15 +1,15 @@
 #![allow(dead_code)]
 
 use std::fmt::{self, Debug, Formatter};
+use lay::Measured;
 
 type Block = u32;
 const BLOCK_SIZE: usize = 32;
 const BLOCK_MASK: usize = (!(0 as Block)) as usize;
 
 pub struct BitArray {
-    // TODO: not pub, they're private fields.
-    pub inner: Vec<Block>,
-    pub len: usize,
+    inner: Vec<Block>,
+    len: usize,
 }
 
 impl BitArray {
@@ -37,6 +37,17 @@ impl BitArray {
             *ones.inner.last_mut().unwrap() = (1 << rem) - 1;
         }
         ones
+    }
+
+    pub fn copy_from(&mut self, other: &Self) {
+        let cap = other.inner.len();
+        if self.inner.len() < cap {
+            self.inner.resize(cap, 0);
+        }
+        for i in 0..other.inner.len() {
+            self.inner[i] = other.inner[i];
+        }
+        self.len = other.len;
     }
 
     pub fn reset(&mut self) {
@@ -78,6 +89,10 @@ impl BitArray {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
     pub fn true_indices(&self) -> TIndices {
         TIndices::new(&self)
     }
@@ -93,6 +108,14 @@ impl Debug for BitArray {
             fmt.write_fmt(format_args!(" {:b}", *bin))?;
         }
         fmt.write_fmt(format_args!("], len: {} }}", self.len))
+    }
+}
+
+impl Measured for BitArray {
+    type Slot = u32;
+
+    fn get(&self, n: u32) -> bool {
+        self.get_bool(n as usize)
     }
 }
 

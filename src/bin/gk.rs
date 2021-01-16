@@ -1,14 +1,22 @@
-use lay::Operations;
-use lay::gates::CliffordGate;
-use lay_simulator_gk::GottesmanKnillSimulator;
+use lay::{Layer, OpsVec};
+use lay_simulator_gk::{GottesmanKnillSimulator, BitArray};
 
 fn main() {
     let mut cli = GottesmanKnillSimulator::from_seed(2, 0);
-    cli.x(0);
-    cli.cx(0, 1);
+    let mut ops = OpsVec::new();
+    ops.x(0);
+    ops.cx(0, 1);
+    cli.send(ops.as_ref());
     cli.dump_print();
-    cli.measure(0, 0);
+    ops.clear();
+    ops.measure(0, 0);
+    cli.send(ops.as_ref());
     cli.dump_print();
-    cli.measure(1, 1);
+    ops.clear();
+    ops.measure(1, 1);
+    cli.send(ops.as_ref());
     cli.dump_print();
+    let mut result = BitArray::zeros(0);
+    cli.receive(&mut result);
+    println!("result: {:?}", result);
 }
