@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::fmt::{self, Debug, Formatter};
+use lay::Measured;
 
 type Block = u32;
 const BLOCK_SIZE: usize = 32;
@@ -104,6 +105,14 @@ impl Debug for BitArray {
             fmt.write_fmt(format_args!(" {:b}", *bin))?;
         }
         fmt.write_fmt(format_args!("], len: {} }}", self.len))
+    }
+}
+
+impl Measured for BitArray {
+    type Slot = u32;
+
+    fn get(&self, n: u32) -> bool {
+        self.get_bool(n as usize)
     }
 }
 

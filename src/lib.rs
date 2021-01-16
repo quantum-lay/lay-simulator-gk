@@ -10,7 +10,6 @@ pub use bitarray::BitArray;
 mod fakerng;
 pub use fakerng::RepeatSeqFakeRng;
 
-pub type Qubit = u32;
 pub type DefaultRng = XorShiftRng;
 
 #[derive(Debug)]
@@ -28,13 +27,13 @@ impl<Rng: RngCore + Debug> SGate for GottesmanKnillSimulator<Rng> {}
 impl<Rng: RngCore + Debug> CXGate for GottesmanKnillSimulator<Rng> {}
 
 impl GottesmanKnillSimulator<DefaultRng> {
-    pub fn from_seed(n: Qubit, seed: u64) -> Self {
+    pub fn from_seed(n: u32, seed: u64) -> Self {
         Self::from_rng(n, DefaultRng::seed_from_u64(seed))
     }
 }
 
 impl<Rng: RngCore> GottesmanKnillSimulator<Rng> {
-    pub fn from_rng(n: Qubit, rng: Rng) -> Self {
+    pub fn from_rng(n: u32, rng: Rng) -> Self {
         let xs = (0..n).map(|_| BitArray::zeros(n as usize)).collect();
         let zs = (0..n).map(|i| {
             let mut arr = BitArray::zeros(n as usize);
@@ -54,14 +53,14 @@ impl<Rng> GottesmanKnillSimulator<Rng> {
         println!("sgns: {:?}", self.sgns);
         println!("measured: {:?}", self.measured);
     }
-    pub fn n_qubits(&self) -> Qubit {
+    pub fn n_qubits(&self) -> u32 {
         self.xs.len() as _
     }
 }
 
 impl<Rng: RngCore + Debug> Layer for GottesmanKnillSimulator<Rng> {
-    type Qubit = Qubit;
-    type Slot = Qubit;
+    type Qubit = u32;
+    type Slot = u32;
     type Buffer = BitArray;
     type Requested = ();
     type Response = ();
@@ -91,11 +90,11 @@ impl<Rng: RngCore + Debug> Layer for GottesmanKnillSimulator<Rng> {
         }
     }
 
-    fn receive(&mut self, buf: &mut Self::Buffer) {
-        buf.copy_from(&self.measured)
+    fn receive(&mut self, buf: &mut BitArray) {
+        buf.copy_from(&self.measured);
     }
 
-    fn send_receive(&mut self, ops: &[Operation<Self>], buf: &mut Self::Buffer) {
+    fn send_receive(&mut self, ops: &[Operation<Self>], buf: &mut BitArray) {
         self.send(ops);
         self.receive(buf);
     }
@@ -110,13 +109,13 @@ impl<Rng: RngCore> GottesmanKnillSimulator<Rng> {
         self.measured.reset();
     }
 
-    fn measure(&mut self, q: Qubit, ch: Qubit) {
+    fn measure(&mut self, q: u32, ch: u32) {
         let bit = measure(self, q);
         self.measured.set_bool(ch as usize, bit);
     }
 
     #[inline]
-    fn x(&mut self, q: Qubit) {
+    fn x(&mut self, q: u32) {
         for (i, _) in self.zs.iter().enumerate()
                                     .filter(|(_, zs)| zs.get_bool(q as usize)) {
             self.sgns.negate(i as usize);
@@ -124,7 +123,7 @@ impl<Rng: RngCore> GottesmanKnillSimulator<Rng> {
     }
 
     #[inline]
-    fn y(&mut self, q: Qubit) {
+    fn y(&mut self, q: u32) {
         for (i, _) in  self.xs.iter().zip(self.zs.iter())
                            .enumerate()
                            .filter(|(_, (xs, zs))| (xs.get_masked(q as usize) ^ zs.get_masked(q as usize)) != 0) {
@@ -133,7 +132,7 @@ impl<Rng: RngCore> GottesmanKnillSimulator<Rng> {
     }
 
     #[inline]
-    fn z(&mut self, q: Qubit) {
+    fn z(&mut self, q: u32) {
         for (i, _) in self.xs.iter().enumerate()
                                     .filter(|(_, xs)| xs.get_bool(q as usize)) {
             self.sgns.negate(i as usize);
@@ -141,7 +140,7 @@ impl<Rng: RngCore> GottesmanKnillSimulator<Rng> {
     }
 
     #[inline]
-    fn h(&mut self, q: Qubit) {
+    fn h(&mut self, q: u32) {
         for (i, (xs, zs)) in self.xs.iter_mut().zip(self.zs.iter_mut()).enumerate() {
             let x = xs.get_bool(q as usize);
             let z = zs.get_bool(q as usize);
@@ -155,7 +154,7 @@ impl<Rng: RngCore> GottesmanKnillSimulator<Rng> {
     }
 
     #[inline]
-    fn s(&mut self, q: Qubit) {
+    fn s(&mut self, q: u32) {
         for (i, (xs, zs)) in self.xs.iter().zip(self.zs.iter_mut())
                                            .enumerate() {
             if xs.get_bool(q as usize) {
@@ -168,7 +167,7 @@ impl<Rng: RngCore> GottesmanKnillSimulator<Rng> {
     }
 
     #[inline]
-    fn sdg(&mut self, q: Qubit) {
+    fn sdg(&mut self, q: u32) {
         for (i, (xs, zs)) in self.xs.iter().zip(self.zs.iter_mut())
                                            .enumerate() {
             if xs.get_bool(q as usize) {
@@ -181,7 +180,7 @@ impl<Rng: RngCore> GottesmanKnillSimulator<Rng> {
     }
 
     #[inline]
-    fn cx(&mut self, c: Qubit, t: Qubit) {
+    fn cx(&mut self, c: u32, t: u32) {
         for (i, (xs, zs)) in self.xs.iter_mut()
                                  .zip(self.zs.iter_mut())
                                  .enumerate() {
@@ -209,7 +208,7 @@ fn mult_to<Rng>(gk: &mut GottesmanKnillSimulator<Rng>, dest: usize, src: usize) 
     gk.sgns.set_bool(dest, gk.sgns.get_bool(src));
 }
 
-fn measure<Rng: RngCore>(gk: &mut GottesmanKnillSimulator<Rng>, q: Qubit) -> bool {
+fn measure<Rng: RngCore>(gk: &mut GottesmanKnillSimulator<Rng>, q: u32) -> bool {
     let noncommutatives: Vec<_> = gk.xs.iter().map(|a| a.get_bool(q as usize))
                                               .enumerate()
                                               .filter(|(_, b)| *b)
@@ -275,7 +274,7 @@ fn measure<Rng: RngCore>(gk: &mut GottesmanKnillSimulator<Rng>, q: Qubit) -> boo
 #[cfg(test)]
 mod tests {
     #![allow(unused_imports)]
-    use crate::{GottesmanKnillSimulator, BitArray, Qubit, DefaultRng, RepeatSeqFakeRng};
+    use crate::{GottesmanKnillSimulator, BitArray, DefaultRng, RepeatSeqFakeRng};
     use rand_core::{RngCore, SeedableRng};
     use rand_xorshift::XorShiftRng;
     use lay::{Layer, OpsVec};
@@ -289,22 +288,22 @@ mod tests {
         let _ = GottesmanKnillSimulator::from_seed(3, 0);
     }
 
-    fn check(f: impl Fn(&mut OpsVec<GottesmanKnillSimulator<DefaultRng>>, Qubit), expect: &[u32]) {
+    fn check(f: impl Fn(&mut OpsVec<GottesmanKnillSimulator<DefaultRng>>, u32), expect: &[u32]) {
         let mut ops = OpsVec::new();
         let mut result = BitArray::zeros(0);
-        f(&mut ops, expect.len() as Qubit);
-        GottesmanKnillSimulator::from_seed(expect.len() as Qubit, 0).send_receive(ops.as_ref(), &mut result);
+        f(&mut ops, expect.len() as u32);
+        GottesmanKnillSimulator::from_seed(expect.len() as u32, 0).send_receive(ops.as_ref(), &mut result);
         let actual: Vec<_> = (0..expect.len()).map(|i| result.get_bool(i) as u32).collect();
         assert_eq!(actual.as_slice(), expect);
     }
 
-    fn check_with_randseq(f: impl Fn(&mut OpsVec<GottesmanKnillSimulator<RepeatSeqFakeRng>>, Qubit),
+    fn check_with_randseq(f: impl Fn(&mut OpsVec<GottesmanKnillSimulator<RepeatSeqFakeRng>>, u32),
                           expect: &[u32],
                           seq: Vec<u64>) {
         let mut ops = OpsVec::new();
         let mut result = BitArray::zeros(0);
-        f(&mut ops, expect.len() as Qubit);
-        GottesmanKnillSimulator::from_rng(expect.len() as Qubit,
+        f(&mut ops, expect.len() as u32);
+        GottesmanKnillSimulator::from_rng(expect.len() as u32,
                                           RepeatSeqFakeRng::new(seq)).send_receive(ops.as_ref(), &mut result);
         let actual: Vec<_> = (0..expect.len()).map(|i| result.get_bool(i) as u32).collect();
         assert_eq!(actual.as_slice(), expect);
