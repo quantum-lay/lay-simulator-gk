@@ -476,6 +476,19 @@ mod tests {
         sim.send(ops.as_ref());
     }
 
+    #[test]
+    fn test_manyqubit2() {
+        let n_qubits = 200;
+        let mut sim = GottesmanKnillSimulator::from_seed(n_qubits, 0);
+        let mut ops = OpsVec::<GottesmanKnillSimulator<_>>::new();
+        ops.initialize();
+        for i in 0..n_qubits {
+            ops.x(i);
+            ops.measure(i, i);
+        }
+        sim.send(ops.as_ref());
+    }
+
     /*
     #[test]
     fn test_rand_except_cnot() {
