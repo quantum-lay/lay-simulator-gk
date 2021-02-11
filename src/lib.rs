@@ -282,7 +282,7 @@ mod tests {
     use crate::{GottesmanKnillSimulator, BitArray, DefaultRng, RepeatSeqFakeRng};
     use rand_core::{RngCore, SeedableRng};
     use rand_xorshift::XorShiftRng;
-    use lay::{Layer, OpsVec};
+    use lay::{Layer, OpsVec, Measured};
     use tokio::{prelude::*, runtime::Runtime};
 
 
@@ -489,71 +489,72 @@ mod tests {
         sim.send(ops.as_ref());
     }
 
-    /*
     #[test]
-    fn test_rand_except_cnot() {
-        let mut rng = XorShiftRng::seed_from_u64(123);
-        let mut gk = GottesmanKnillSimulator::from_seed(2, 0);
-        let mut bq = BlueqatOperations::new();
-        for _ in 0..10 {
-            match rng.next_u32() % 6 {
-                0 => {
-                    bq.h(0);
-                    gk.h(0);
-                },
-                1 => {
-                    bq.x(0);
-                    gk.x(0);
-                },
-                2 => {
-                    bq.y(0);
-                    gk.y(0);
-                },
-                3 => {
-                    bq.z(0);
-                    gk.z(0);
-                },
-                4 => {
-                    bq.s(0);
-                    gk.s(0);
-                },
-                5 => {
-                    bq.sdg(0);
-                    gk.sdg(0);
-                },
-                _ => unreachable!()
-            }
+    fn test_measure() {
+        let n_qubits = 5;
+        let mut sim = GottesmanKnillSimulator::from_seed(n_qubits, 0);
+        let mut ops = OpsVec::<GottesmanKnillSimulator<_>>::new();
+        ops.initialize();
+        for i in 0..n_qubits {
+            ops.x(i);
+            ops.measure(i, i);
         }
-        for _ in 0..10 {
-            match rng.next_u32() % 6 {
-                0 => {
-                    bq.h(1);
-                    gk.h(1);
-                },
-                1 => {
-                    bq.x(1);
-                    gk.x(1);
-                },
-                2 => {
-                    bq.y(1);
-                    gk.y(1);
-                },
-                3 => {
-                    bq.z(1);
-                    gk.z(1);
-                },
-                4 => {
-                    bq.s(1);
-                    gk.s(1);
-                },
-                5 => {
-                    bq.sdg(1);
-                    gk.sdg(1);
-                },
-                _ => unreachable!()
-            }
-        }
-        check_stabilized(&gk, &bq);
+        let mut buf = sim.make_buffer();
+        sim.send_receive(ops.as_ref(), &mut buf);
+        assert!(buf.get(0));
+        assert!(buf.get(1));
+        assert!(buf.get(2));
+        assert!(buf.get(3));
+        assert!(buf.get(4));
     }
-    */
+
+    #[test]
+    fn test_measure2() {
+        let n_qubits = 5;
+        let mut sim = GottesmanKnillSimulator::from_seed(n_qubits, 0);
+        let mut ops = OpsVec::<GottesmanKnillSimulator<_>>::new();
+        ops.initialize();
+        for i in 0..n_qubits {
+            ops.x(i);
+        }
+        for i in 0..n_qubits {
+            ops.measure(i, i);
+        }
+        let mut buf = sim.make_buffer();
+        sim.send_receive(ops.as_ref(), &mut buf);
+        assert!(buf.get(0));
+        assert!(buf.get(1));
+        assert!(buf.get(2));
+        assert!(buf.get(3));
+        assert!(buf.get(4));
+    }
+
+    #[test]
+    fn test_measure3() {
+        let mut sim = GottesmanKnillSimulator::from_seed(14, 0);
+        let mut ops = OpsVec::<GottesmanKnillSimulator<_>>::new();
+        ops.initialize();
+        for i in 7..14 {
+            ops.x(i);
+        }
+        for i in 0..14 {
+            ops.measure(i, i);
+        }
+        let mut buf = sim.make_buffer();
+        sim.send_receive(ops.as_ref(), &mut buf);
+        assert!(!buf.get(0));
+        assert!(!buf.get(1));
+        assert!(!buf.get(2));
+        assert!(!buf.get(3));
+        assert!(!buf.get(4));
+        assert!(!buf.get(5));
+        assert!(!buf.get(6));
+        assert!(buf.get(7));
+        assert!(buf.get(8));
+        assert!(buf.get(9));
+        assert!(buf.get(10));
+        assert!(buf.get(11));
+        assert!(buf.get(12));
+        assert!(buf.get(13));
+    }
 }
