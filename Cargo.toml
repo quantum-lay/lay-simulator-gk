@@ -3,11 +3,14 @@ name = "lay-simulator-gk"
 version = "0.1.0"
 authors = ["gyu-don <takumi.kt+git@gmail.com>"]
 edition = "2018"
+descriptions = "Gottesman-Knill simulator for lay"
+license = "Apache-2.0"
+publish = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lay = { path = "../lay" }
+lay = { git = "https://github.com/quantum-lay/lay" }
 rand_xorshift = "0.2.0"
 rand_core = "0.5.1"
 
