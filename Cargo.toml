@@ -3,7 +3,7 @@ name = "lay-simulator-gk"
 version = "0.1.0"
 authors = ["gyu-don <takumi.kt+git@gmail.com>"]
 edition = "2018"
-descriptions = "Gottesman-Knill simulator for lay"
+description = "Gottesman-Knill simulator for lay"
 license = "Apache-2.0"
 publish = true
 
