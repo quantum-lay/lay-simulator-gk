@@ -557,4 +557,46 @@ mod tests {
         assert!(buf.get(12));
         assert!(buf.get(13));
     }
+
+    #[test]
+    fn test_bell() {
+        let mut sim = GottesmanKnillSimulator::from_seed(14, 0);
+        let mut ops = OpsVec::<GottesmanKnillSimulator<_>>::new();
+        let mut buf = sim.make_buffer();
+        ops.initialize();
+        ops.h(1);
+        ops.cx(1, 0);
+        ops.measure(0, 0);
+        ops.measure(0, 1);
+        for i in 0..10 {
+            sim.send_receive(ops.as_ref(), &mut buf);
+            let s0 = buf.get(0);
+            let s1 = buf.get(1);
+            eprintln!("try: {}, |{}{}>", i, s0 as u8, s1 as u8);
+            assert_eq!(s0, s1);
+        }
+    }
+
+    #[test]
+    fn test_ghz() {
+        let mut sim = GottesmanKnillSimulator::from_seed(3, 0);
+        let mut ops = sim.opsvec();
+        let mut buf = sim.make_buffer();
+        ops.initialize();
+        ops.h(1);
+        ops.cx(1, 0);
+        ops.cx(1, 2);
+        ops.measure(0, 0);
+        ops.measure(1, 1);
+        ops.measure(2, 2);
+        for i in 0..10 {
+            sim.send_receive(ops.as_ref(), &mut buf);
+            let m0 = buf.get(0);
+            let m1 = buf.get(1);
+            let m2 = buf.get(2);
+            eprintln!("try: {}, |{}{}{}>", i, m0 as u8, m1 as u8, m2 as u8);
+            assert_eq!(m0, m1);
+            assert_eq!(m0, m2);
+        }
+    }
 }
