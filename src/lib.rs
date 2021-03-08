@@ -7,9 +7,6 @@ use lay::{Layer, gates::{PauliGate, HGate, SGate, CXGate}, operations::{opid, Op
 mod bitarray;
 pub use bitarray::BitArray;
 
-mod fakerng;
-pub use fakerng::RepeatSeqFakeRng;
-
 pub type DefaultRng = XorShiftRng;
 
 #[derive(Debug)]
@@ -279,7 +276,8 @@ fn measure<Rng: RngCore>(gk: &mut GottesmanKnillSimulator<Rng>, q: u32) -> bool 
 #[cfg(test)]
 mod tests {
     #![allow(unused_imports)]
-    use crate::{GottesmanKnillSimulator, BitArray, DefaultRng, RepeatSeqFakeRng};
+    use crate::{GottesmanKnillSimulator, BitArray, DefaultRng};
+    use fakerng::RepeatSeqFakeRng;
     use rand_core::{RngCore, SeedableRng};
     use rand_xorshift::XorShiftRng;
     use lay::{Layer, OpsVec, Measured};

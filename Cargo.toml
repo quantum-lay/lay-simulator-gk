@@ -12,8 +12,10 @@ publish = true
 
 [dependencies]
 lay = { git = "https://github.com/quantum-lay/lay", version = "0.1.0" }
-rand_xorshift = "0.2.0"
-rand_core = "0.5.1"
+rand_xorshift = "0.3.0"
+rand_core = "0.6.2"
+fakerng = "0.1.0"
+rand = "0.8.3"
 
 [dev-dependencies]
 tokio = { version = "0.2.21", features = ["rt-core", "rt-threaded", "blocking", "macros"] }
