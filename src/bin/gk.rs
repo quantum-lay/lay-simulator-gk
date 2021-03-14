@@ -1,9 +1,9 @@
-use lay::{Layer, OpsVec};
+use lay::Layer;
 use lay_simulator_gk::{GottesmanKnillSimulator, BitArray};
 
 fn main() {
     let mut cli = GottesmanKnillSimulator::from_seed(2, 0);
-    let mut ops = OpsVec::<GottesmanKnillSimulator<_>>::new();
+    let mut ops = cli.opsvec();
     ops.x(0);
     ops.cx(0, 1);
     cli.send(ops.as_ref());
